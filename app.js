@@ -2,22 +2,29 @@ document.addEventListener("DOMContentLoaded", () => {
   const scoreDisplay = document.getElementById("score");
   const width = 28;
   let score = 0;
+  const pauseBtn = document.querySelector(".pauseBtn");
+  const overlay = document.querySelector(".overlay");
+  const pauseText = document.querySelector(".pauseText");
+  const gameOverTexte = document.querySelector(".gameOverText");
+  const restartBtn = document.querySelector(".restartBtn");
+  let isPaused = false;
+  let isFinished = false;
   const grid = document.querySelector(".grid");
   const layout = [
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1,
-    1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 3, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0,
-    1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 3, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0,
+    1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 3, 1, 4, 4, 1, 0, 1, 4, 4, 4, 1, 0, 1, 1, 0,
+    1, 4, 4, 4, 1, 0, 1, 4, 4, 1, 3, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0,
     1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1,
     1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1,
-    1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 4, 1, 1, 1, 2, 2, 1, 1,
-    1, 4, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 4, 1, 2, 2, 2,
+    1, 1, 1, 1, 1, 4, 4, 4, 4, 4, 1, 0, 1, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1,
+    1, 0, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 0, 1, 1, 4, 1, 1, 1, 2, 2, 1, 1,
+    1, 4, 1, 1, 0, 1, 4, 4, 4, 4, 4, 1, 1, 1, 1, 1, 1, 0, 1, 1, 4, 1, 2, 2, 2,
     2, 2, 2, 1, 4, 1, 1, 0, 1, 1, 1, 1, 1, 1, 4, 4, 4, 4, 4, 4, 0, 0, 0, 4, 1,
     2, 2, 2, 2, 2, 2, 1, 4, 0, 0, 0, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1, 1, 1, 0, 1,
     1, 4, 1, 2, 2, 2, 2, 2, 2, 1, 4, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -42,6 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // 2 - ghost-lair
   // 3 - power-pellet
   // 4 - empty
+  // grille de 28 par 28
 
   const squares = [];
 
@@ -79,54 +87,61 @@ document.addEventListener("DOMContentLoaded", () => {
 
   //move pacman
   function movePacman(e) {
-    squares[pacmanCurrentIndex].classList.remove("pac-man");
-    switch (e.keyCode) {
-      case 37:
-        if (
-          pacmanCurrentIndex % width !== 0 &&
-          !squares[pacmanCurrentIndex - 1].classList.contains("wall") &&
-          !squares[pacmanCurrentIndex - 1].classList.contains("ghost-lair")
-        )
-          pacmanCurrentIndex -= 1;
-        if (squares[pacmanCurrentIndex - 1] === squares[363]) {
-          pacmanCurrentIndex = 391;
-        }
-        break;
-      case 38:
-        if (
-          pacmanCurrentIndex - width >= 0 &&
-          !squares[pacmanCurrentIndex - width].classList.contains("wall") &&
-          !squares[pacmanCurrentIndex - width].classList.contains("ghost-lair")
-        )
-          pacmanCurrentIndex -= width;
-        break;
-      case 39:
-        if (
-          pacmanCurrentIndex % width < width - 1 &&
-          !squares[pacmanCurrentIndex + 1].classList.contains("wall") &&
-          !squares[pacmanCurrentIndex + 1].classList.contains("ghost-lair")
-        )
-          pacmanCurrentIndex += 1;
-        if (squares[pacmanCurrentIndex + 1] === squares[392]) {
-          pacmanCurrentIndex = 364;
-        }
-        break;
-      case 40:
-        if (
-          pacmanCurrentIndex + width < width * width &&
-          !squares[pacmanCurrentIndex + width].classList.contains("wall") &&
-          !squares[pacmanCurrentIndex + width].classList.contains("ghost-lair")
-        )
-          pacmanCurrentIndex += width;
-        break;
+    if (isPaused == false && isFinished == false) {
+      squares[pacmanCurrentIndex].classList.remove("pac-man");
+      switch (e.keyCode) {
+        case 37:
+          if (
+            pacmanCurrentIndex % width !== 0 &&
+            !squares[pacmanCurrentIndex - 1].classList.contains("wall") &&
+            !squares[pacmanCurrentIndex - 1].classList.contains("ghost-lair")
+          )
+            pacmanCurrentIndex -= 1;
+          if (squares[pacmanCurrentIndex - 1] === squares[363]) {
+            pacmanCurrentIndex = 391;
+          }
+          break;
+        case 38:
+          if (
+            pacmanCurrentIndex - width >= 0 &&
+            !squares[pacmanCurrentIndex - width].classList.contains("wall") &&
+            !squares[pacmanCurrentIndex - width].classList.contains(
+              "ghost-lair"
+            )
+          )
+            pacmanCurrentIndex -= width;
+          break;
+        case 39:
+          if (
+            pacmanCurrentIndex % width < width - 1 &&
+            !squares[pacmanCurrentIndex + 1].classList.contains("wall") &&
+            !squares[pacmanCurrentIndex + 1].classList.contains("ghost-lair")
+          )
+            pacmanCurrentIndex += 1;
+          if (squares[pacmanCurrentIndex + 1] === squares[392]) {
+            pacmanCurrentIndex = 364;
+          }
+          break;
+        case 40:
+          if (
+            pacmanCurrentIndex + width < width * width &&
+            !squares[pacmanCurrentIndex + width].classList.contains("wall") &&
+            !squares[pacmanCurrentIndex + width].classList.contains(
+              "ghost-lair"
+            )
+          )
+            pacmanCurrentIndex += width;
+          break;
+      }
+      squares[pacmanCurrentIndex].classList.add("pac-man");
+      pacDotEaten();
+      powerPelletEaten();
+      checkForGameOver();
+      checkForWin();
+      checkforPause();
     }
-    squares[pacmanCurrentIndex].classList.add("pac-man");
-    pacDotEaten();
-    powerPelletEaten();
-    checkForGameOver();
-    checkForWin();
   }
-  document.addEventListener("keyup", movePacman);
+  document.addEventListener("keydown", movePacman);
 
   // what happens when you eat a pac-dot
   function pacDotEaten() {
@@ -229,11 +244,14 @@ document.addEventListener("DOMContentLoaded", () => {
       squares[pacmanCurrentIndex].classList.contains("ghost") &&
       !squares[pacmanCurrentIndex].classList.contains("scared-ghost")
     ) {
+      isFinished = true;
       ghosts.forEach((ghost) => clearInterval(ghost.timerId));
       document.removeEventListener("keyup", movePacman);
-      setTimeout(function () {
-        alert("Game Over");
-      }, 500);
+
+      grid.classList.add("blur");
+      overlay.style.pointerEvents = "auto";
+      gameOverTexte.classList.add("show");
+      restartBtn.classList.add("show");
     }
   }
 
@@ -247,4 +265,28 @@ document.addEventListener("DOMContentLoaded", () => {
       }, 500);
     }
   }
+
+  pauseBtn.addEventListener("click", () => {
+    if ((isFinished = false)) {
+      if (isPaused) {
+        ghosts.forEach((ghost) => moveGhost(ghost));
+        isPaused = false;
+        pauseBtn.textContent = "Pause";
+        grid.classList.remove("blur"); // Appliquer la classe blur à la grille
+        overlay.style.pointerEvents = "none"; // Désactiver les événements de souris sur l'overlay
+        pauseText.classList.remove("show");
+      } else {
+        ghosts.forEach((ghost) => clearInterval(ghost.timerId));
+        isPaused = true;
+        pauseBtn.textContent = "Play";
+        grid.classList.add("blur");
+        overlay.style.pointerEvents = "auto";
+        pauseText.classList.add("show");
+      }
+    }
+  });
+
+  restartBtn.addEventListener("click", () => {
+    location.reload();
+  });
 });
