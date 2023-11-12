@@ -5,7 +5,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const pauseBtn = document.querySelector(".pauseBtn");
   const overlay = document.querySelector(".overlay");
   const pauseText = document.querySelector(".pauseText");
-  const gameOverTexte = document.querySelector(".gameOverText");
+  const gameOverText = document.querySelector(".gameOverText");
+  const victoireText = document.querySelector(".victoireText");
   const restartBtn = document.querySelector(".restartBtn");
   let isPaused = false;
   let isFinished = false;
@@ -250,7 +251,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       grid.classList.add("blur");
       overlay.style.pointerEvents = "auto";
-      gameOverTexte.classList.add("show");
+      gameOverText.classList.add("show");
       restartBtn.classList.add("show");
     }
   }
@@ -260,9 +261,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (score === 274) {
       ghosts.forEach((ghost) => clearInterval(ghost.timerId));
       document.removeEventListener("keyup", movePacman);
-      setTimeout(function () {
-        alert("You have WON!");
-      }, 500);
+
+      isFinished = true;
+      grid.classList.add("blur");
+      overlay.style.pointerEvents = "auto";
+      victoireText.classList.add("show");
+      restartBtn.classList.add("show");
     }
   }
 
