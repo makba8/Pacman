@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const gameOverText = document.querySelector(".gameOverText");
   const victoireText = document.querySelector(".victoireText");
   const restartBtn = document.querySelector(".restartBtn");
+  restartBtn.disabled = true;
   let isPaused = false;
   let isFinished = false;
   const grid = document.querySelector(".grid");
@@ -253,6 +254,7 @@ document.addEventListener("DOMContentLoaded", () => {
       overlay.style.pointerEvents = "auto";
       gameOverText.classList.add("show");
       restartBtn.classList.add("show");
+      restartBtn.disabled = false;
     }
   }
 
@@ -261,24 +263,24 @@ document.addEventListener("DOMContentLoaded", () => {
     if (score === 274) {
       ghosts.forEach((ghost) => clearInterval(ghost.timerId));
       document.removeEventListener("keyup", movePacman);
-
       isFinished = true;
       grid.classList.add("blur");
       overlay.style.pointerEvents = "auto";
       victoireText.classList.add("show");
       restartBtn.classList.add("show");
+      restartBtn.disabled = false;
     }
   }
 
   pauseBtn.addEventListener("click", () => {
-    if ((isFinished = false)) {
+    if (!isFinished) {
       if (isPaused) {
         ghosts.forEach((ghost) => moveGhost(ghost));
-        isPaused = false;
         pauseBtn.textContent = "Pause";
         grid.classList.remove("blur"); // Appliquer la classe blur à la grille
         overlay.style.pointerEvents = "none"; // Désactiver les événements de souris sur l'overlay
         pauseText.classList.remove("show");
+        isPaused = false;
       } else {
         ghosts.forEach((ghost) => clearInterval(ghost.timerId));
         isPaused = true;
