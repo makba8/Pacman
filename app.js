@@ -154,15 +154,29 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  //what happens when you eat a power-pellet
-  function powerPelletEaten() {
-    if (squares[pacmanCurrentIndex].classList.contains("power-pellet")) {
-      score += 10;
-      ghosts.forEach((ghost) => (ghost.isScared = true));
-      setTimeout(unScareGhosts, 10000);
-      squares[pacmanCurrentIndex].classList.remove("power-pellet");
-    }
+  // //what happens when you eat a power-pellet
+  // function powerPelletEaten() {
+  //   if (squares[pacmanCurrentIndex].classList.contains("power-pellet")) {
+  //     score += 10;
+  //     ghosts.forEach((ghost) => (ghost.isScared = true));
+  //     setTimeout(unScareGhosts, 10000);
+  //     squares[pacmanCurrentIndex].classList.remove("power-pellet");
+  //   }
+  // }
+
+  // Fonction pour ce qui se passe quand une power-pellet est mangée
+function powerPelletEaten() {
+  if (squares[pacmanCurrentIndex].classList.contains("power-pellet")) {
+    score += 10;
+    ghosts.forEach((ghost) => {
+      ghost.isScared = true;
+      // Ajouter la classe "scared-ghost" pour indiquer que le fantôme a peur
+      squares[ghost.currentIndex].classList.add("scared-ghost");
+    });
+    setTimeout(unScareGhosts, 10000);
+    squares[pacmanCurrentIndex].classList.remove("power-pellet");
   }
+}
 
   //make the ghosts stop flashing
   function unScareGhosts() {
@@ -195,50 +209,175 @@ document.addEventListener("DOMContentLoaded", () => {
     squares[ghost.currentIndex].classList.add("ghost");
   });
 
-  //move the Ghosts randomly
+  //Bouger les fantomes tout le temps du jeu 
   ghosts.forEach((ghost) => moveGhost(ghost));
 
-  function moveGhost(ghost) {
-    const directions = [-1, +1, width, -width];
-    let direction = directions[Math.floor(Math.random() * directions.length)];
 
-    ghost.timerId = setInterval(function () {
-      //if the next squre your ghost is going to go to does not have a ghost and does not have a wall
-      if (
-        !squares[ghost.currentIndex + direction].classList.contains("ghost") &&
-        !squares[ghost.currentIndex + direction].classList.contains("wall")
-      ) {
-        //remove the ghosts classes
-        squares[ghost.currentIndex].classList.remove(ghost.className);
-        squares[ghost.currentIndex].classList.remove("ghost", "scared-ghost");
-        //move into that space
-        ghost.currentIndex += direction;
-        squares[ghost.currentIndex].classList.add(ghost.className, "ghost");
-        //else find a new random direction ot go in
-      } else direction = directions[Math.floor(Math.random() * directions.length)];
-
-      //if the ghost is currently scared
-      if (ghost.isScared) {
-        squares[ghost.currentIndex].classList.add("scared-ghost");
+// fonction a* 
+  function aStar(startIndex, targetIndex) {
+    const width = 28;
+    const openSet = [startIndex]; // L'ensemble des cellules à explorer
+    const cameFrom = {}; // Stocke la relation "depuis quels cellule ont est arrivé à cette cellule"
+    const gScore = {}; // Coût du départ à la  cellule actuelle
+    const fScore = {}; // Coût total estimé du départ à la cellule cible en passant par la cellule actuelle
+  
+    gScore[startIndex] = 0; 
+    fScore[startIndex] = heuristic(startIndex, targetIndex); // Estimation du coût total
+  
+    while (openSet.length > 0) {
+      const current = getLowestFScore(openSet, fScore); // Sélectionne la cellule avec le coût total estimé le plus bas
+      if (current === targetIndex) {
+        return reconstructPath(cameFrom, targetIndex); // La cible a été atteinte, reconstruit le chemin
       }
-
-      //if the ghost is currently scared and pacman is on it
-      if (
-        ghost.isScared &&
-        squares[ghost.currentIndex].classList.contains("pac-man")
-      ) {
-        squares[ghost.currentIndex].classList.remove(
-          ghost.className,
-          "ghost",
-          "scared-ghost"
-        );
-        ghost.currentIndex = ghost.startIndex;
-        score += 100;
-        squares[ghost.currentIndex].classList.add(ghost.className, "ghost");
+  
+      openSet.splice(openSet.indexOf(current), 1); // Retire la cellule actuelle de l'ensemble à explorer
+  
+      const neighbors = getNeighbors(current, width); // Récupère les voisins valides de la cellule actuelle
+      for (const neighbor of neighbors) {
+        const tentativeGScore = gScore[current] + 1; // Coût du départ à la cellule voisine supposant que le coût est de 1
+  
+        if (!gScore.hasOwnProperty(neighbor) || tentativeGScore < gScore[neighbor]) {
+          cameFrom[neighbor] = current; // Met à jour la cellule depuis laquelle on est arrivé à la cellule voisine
+          gScore[neighbor] = tentativeGScore; // Met à jour le coût du départ à la cellule voisine
+          fScore[neighbor] = gScore[neighbor] + heuristic(neighbor, targetIndex); // Met à jour le coût total estimé
+  
+          if (!openSet.includes(neighbor)) {
+            openSet.push(neighbor); // Ajoute la cellule voisine à l'ensemble à explorer si elle n'y est pas déjà
+          }
+        }
       }
-      checkForGameOver();
-    }, ghost.speed);
+    }
+  
+    // Aucun chemin trouvé
+    return [];
   }
+  
+  // Heuristique pour estimer la distance entre deux cellules
+  function heuristic(current, target) {
+    const [x1, y1] = indexToCoordinates(current);
+    const [x2, y2] = indexToCoordinates(target);
+    return Math.abs(x1 - x2) + Math.abs(y1 - y2);
+  }
+  
+  // Convertit un indice en coordonnées [x, y]
+  function indexToCoordinates(index) {
+    const x = index % width;
+    const y = Math.floor(index / width);
+    return [x, y];
+  }
+  
+  // Récupère les voisins valide d'une cellule
+  function getNeighbors(index, width) {
+    const [x, y] = indexToCoordinates(index);
+    const neighbors = [];
+  
+    if (x > 0 && !squares[index - 1].classList.contains("wall")) {
+      neighbors.push(index - 1);
+    }
+  
+    if (x < width - 1 && !squares[index + 1].classList.contains("wall")) {
+      neighbors.push(index + 1);
+    }
+  
+    if (y > 0 && !squares[index - width].classList.contains("wall")) {
+      neighbors.push(index - width);
+    }
+  
+    if (y < width - 1 && !squares[index + width].classList.contains("wall")) {
+      neighbors.push(index + width);
+    }
+  
+    return neighbors;
+  }
+  
+  // Récupère l'indice de la cellule avec le plus bas coût total estimé
+  function getLowestFScore(openSet, fScore) {
+    return openSet.reduce((lowest, cell) => (fScore[cell] < fScore[lowest] ? cell : lowest), openSet[0]);
+  }
+  
+  // Reconstruit le chemin à partir des informations de suivi
+  function reconstructPath(cameFrom, current) {
+    const path = [current];
+    while (cameFrom.hasOwnProperty(current)) {
+      current = cameFrom[current];
+      path.unshift(current);
+    }
+    return path;
+  }
+
+// Si les fantomes sont effrayé, on stop A* et on les fait simplement se déplacer de façon random 
+function moveRandom(ghost) {
+  const directions = [-1, +1, width, -width];
+  let direction = directions[Math.floor(Math.random() * directions.length)];
+    //if the next squre your ghost is going to go to does not have a ghost and does not have a wall
+    if (
+      !squares[ghost.currentIndex + direction].classList.contains("ghost") &&
+      !squares[ghost.currentIndex + direction].classList.contains("scared-ghost") &&
+      !squares[ghost.currentIndex + direction].classList.contains("pac-man") &&
+      !squares[ghost.currentIndex + direction].classList.contains("wall")
+    ) {
+      //remove the ghosts classes
+      squares[ghost.currentIndex].classList.remove(ghost.className);
+      squares[ghost.currentIndex].classList.remove("ghost", "scared-ghost");
+      //move into that space
+      ghost.currentIndex += direction;
+      squares[ghost.currentIndex].classList.add(ghost.className, "scared-ghost");
+      //else find a new random direction ot go in
+    } else direction = directions[Math.floor(Math.random() * directions.length)];
+}
+
+// Modification de celle de base pour implémenter A* 
+
+function moveGhost(ghost) {
+  ghost.timerId = setInterval(function () {
+    // Si le fantôme est effrayé et que pacman le touche 
+    if (
+      ghost.isScared &&
+      squares[ghost.currentIndex].classList.contains("pac-man")
+    ) {
+      squares[ghost.currentIndex].classList.remove(
+        ghost.className,
+        "ghost",
+        "scared-ghost"
+      );
+      ghost.currentIndex = ghost.startIndex;
+      score += 100;
+      squares[ghost.currentIndex].classList.add(ghost.className, "ghost");
+    }
+
+    // Si le fantôme est effrayé 
+    if (ghost.isScared) {
+      squares[ghost.currentIndex].classList.add("scared-ghost");
+      moveRandom(ghost); 
+    }
+
+    // Si le fantôme n'est pas effrayé, il se déplace vers Pac-Man en utilisant A*
+     else  {
+      const pathToPacman = aStar(ghost.currentIndex, pacmanCurrentIndex);
+
+      // Assurez-vous que le chemin n'est pas vide
+      if (pathToPacman.length > 1) {
+        const nextMove = pathToPacman[1];
+        // Retirez les classes des fantômes
+        squares[ghost.currentIndex].classList.remove(ghost.className, "ghost", "scared-ghost");
+        ghost.currentIndex = nextMove;
+        squares[ghost.currentIndex].classList.add(ghost.className, "ghost");
+      }
+    }
+
+    // Gérez les cas spéciaux, comme manger le Pac-Man
+    if (ghost.isScared && squares[ghost.currentIndex].classList.contains("pac-man")) {
+     
+      // Réinitialisez le Pac-Man à sa position de départ 
+      squares[pacmanCurrentIndex].classList.remove("pac-man");
+      pacmanCurrentIndex = 490;
+      squares[pacmanCurrentIndex].classList.add("pac-man");
+    }
+    
+    checkForGameOver();
+  }, ghost.speed);
+}
+
 
   //check for a game over
   function checkForGameOver() {
@@ -272,9 +411,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+
+  // Code pour mettre le jeu en pause
   pauseBtn.addEventListener("click", () => {
-    if (!isFinished) {
-      if (isPaused) {
+    if (!isFinished) { // vérifie si le jeu n'est pas fini 
+      if (isPaused) { // vérifie si le jeu est deja en pause
         ghosts.forEach((ghost) => moveGhost(ghost));
         pauseBtn.textContent = "Pause";
         grid.classList.remove("blur"); // Appliquer la classe blur à la grille
@@ -291,7 +432,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
   });
-
+// Bouton pour recommencer une partie 
   restartBtn.addEventListener("click", () => {
     location.reload();
   });
