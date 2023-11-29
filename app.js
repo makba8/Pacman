@@ -12,6 +12,11 @@ document.addEventListener("DOMContentLoaded", () => {
   let isPaused = false;
   let isFinished = false;
   const grid = document.querySelector(".grid");
+   // Obtenir une référence aux boutons radio
+   var radioPacmanIA = document.getElementById('radioPacmanIA');
+   var radioPacmanJoueur = document.getElementById('radioPacmanJoueur');
+   let pacManIAIntervalId = 250;
+
   const layout = [
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0,
@@ -87,8 +92,31 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // console.log(getCoordinates(pacmanCurrentIndex))
 
+    
+  radioPacmanIA.addEventListener('change', function() {
+    if (radioPacmanIA.checked) {
+      radioPacmanJoueur.checked = false;
+      radioPacmanJoueur.disabled = true; 
+      //Faire bouger le pacMan //TODO : condition : activer cette fonction seulement si on l'as demandé avant de lancer le jeu
+      movePacmanIA();
+      
+    }
+  });
+
+  radioPacmanJoueur.addEventListener('change', function() {
+    if (radioPacmanJoueur.checked) {
+      radioPacmanIA.checked = false;
+      radioPacmanIA.disabled = true; 
+      clearInterval(pacManIAIntervalId);
+      document.addEventListener("keydown", movePacman); //TODO : à retirer si PAC-MAN se déplace tout seul
+
+    }
+  });
+  
+
   //move pacman
   function movePacman(e) {
+    clearInterval(pacManIAIntervalId);
     if (isPaused == false && isFinished == false) {
       squares[pacmanCurrentIndex].classList.remove("pac-man");
       switch (e.keyCode) {
@@ -144,16 +172,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  
-  
- 
-  
+  function movePacmanIA() {//TODO : Esquive les fantomes grace a a*2 mais n'est pas très performant... 
+    clearInterval(pacManIAIntervalId); 
 
-  function movePacmanIA() { //TODO : Pour l'instant, PacMan est bête, il suit juste les PacDots, il faut un jour qu'il esquive les fantômes
-    setInterval(function () {
+    pacManIAIntervalId = setInterval(function () {
       if (isPaused == false && isFinished == false) { //On s'assure que le jeu n'est ni en pause ni fini
 
-        const pathToPacDot = aStar(pacmanCurrentIndex, closestPacDot()); // On va chercher les PacDots les plus proche avec la fonction A*
+        const pathToPacDot = aStar2(pacmanCurrentIndex, closestPacDot()); // On va chercher les PacDots les plus proche avec la fonction A*
 
         // Assurez-vous que le chemin n'est pas vide
         if (pathToPacDot.length > 1) {
@@ -211,16 +236,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // //what happens when you eat a power-pellet
-  // function powerPelletEaten() {
-  //   if (squares[pacmanCurrentIndex].classList.contains("power-pellet")) {
-  //     score += 10;
-  //     ghosts.forEach((ghost) => (ghost.isScared = true));
-  //     setTimeout(unScareGhosts, 10000);
-  //     squares[pacmanCurrentIndex].classList.remove("power-pellet");
-  //   }
-  // }
-
   // Fonction pour ce qui se passe quand une power-pellet est mangée
   function powerPelletEaten() {
     if (squares[pacmanCurrentIndex].classList.contains("power-pellet")) {
@@ -266,14 +281,13 @@ document.addEventListener("DOMContentLoaded", () => {
     squares[ghost.currentIndex].classList.add("ghost");
   });
 
-  //Faire bouger les Personnages
+
 
   //Bouger les fantomes tout le temps du jeu 
   ghosts.forEach((ghost) => moveGhost(ghost));
 
-  //Faire bouger le pacMan //TODO : condition : activer cette fonction seulement si on l'as demandé avant de lancer le jeu
-  movePacmanIA();
-  //document.addEventListener("keydown", movePacman); //TODO : à retirer si PAC-MAN se déplace tout seul
+  
+  
 
 
   // fonction a* 
@@ -390,7 +404,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Modification de celle de base pour implémenter A* 
-
   function moveGhost(ghost) {
     ghost.timerId = setInterval(function () {
       // Si le fantôme est effrayé et que pacman le touche 
@@ -440,8 +453,63 @@ document.addEventListener("DOMContentLoaded", () => {
       checkForGameOver();
     }, ghost.speed);
   }
+///////////////////////a revoir ////////////////////////////////////////////////////////////////////////////
+  // Fonction A* modifiée pour que Pacman évite les fantômes
+function aStar2(startIndex, targetIndex) {
+  const width = 28;
+  const openSet = [startIndex]; // Ensemble des cellules à explorer
+  const cameFrom = {}; // Stocke la relation "depuis quels cellule ont est arrivé à cette cellule"
+  const gScore = {}; // Coût du départ à la cellule actuelle
+  const fScore = {}; // Coût total estimé du départ à la cellule cible en passant par la cellule actuelle
+
+  gScore[startIndex] = 0;
+  fScore[startIndex] = heuristic(startIndex, targetIndex); // Estimation du coût total
+
+  // Boucle principale de l'algorithme A*
+  while (openSet.length > 0) {
+      const current = getLowestFScore(openSet, fScore); // Sélectionne la cellule avec le coût total estimé le plus bas
+
+      // Si la cellule actuelle est la cible, reconstruit le chemin
+      if (current === targetIndex) {
+          return reconstructPath(cameFrom, targetIndex);
+      }
+
+      openSet.splice(openSet.indexOf(current), 1); // Retire la cellule actuelle de l'ensemble à explorer
+
+      const neighbors = getNeighbors(current, width); // Récupère les voisins valides de la cellule actuelle
+
+      // Parcours des voisins
+      for (const neighbor of neighbors) {
+          const tentativeGScore = gScore[current] + 1; // Coût du départ à la cellule voisine supposant que le coût est de 1
+
+          // Vérifie si la case voisine n'est pas occupée par un fantôme
+          if (!isGhostInSquare(neighbor)) {
+            
+              // Si la case voisine n'a pas encore été évaluée ou si le nouveau chemin est meilleur
+              if (!gScore.hasOwnProperty(neighbor) || tentativeGScore < gScore[neighbor]) {
+                  cameFrom[neighbor] = current; // Met à jour la cellule depuis laquelle on est arrivé à la cellule voisine
+                  gScore[neighbor] = tentativeGScore; // Met à jour le coût du départ à la cellule voisine
+                  fScore[neighbor] = gScore[neighbor] + heuristic(neighbor, targetIndex); // Met à jour le coût total estimé
+
+                  // Ajoute la cellule voisine à l'ensemble à explorer si elle n'y est pas déjà
+                  if (!openSet.includes(neighbor)) {
+                      openSet.push(neighbor);
+                  }
+              }
+          }
+      }
+  }
+
+  // Aucun chemin trouvé
+  return [];
+}
 
 
+// Fonction pour vérifier si un fantôme est dans la case
+function isGhostInSquare(index) {
+    return ghosts.some((ghost) => ghost.currentIndex === index);
+}
+///////////////////////////////////////////////////////////////////////////////////////////////
   //check for a game over
   function checkForGameOver() {
     if (

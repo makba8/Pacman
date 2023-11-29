@@ -154,3 +154,7 @@ body {
 .show {
   opacity: 1;
 }
+
+.radio {
+  color: white;
+}
