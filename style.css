@@ -114,8 +114,10 @@ body {
   pointer-events: none; /* Permet aux événements de souris de passer à travers */
   opacity: 0;
   transition: opacity 0.5s ease;
+  text-align: center;
 }
 .victoireText {
+  text-align: center;
   position: fixed;
   top: 260px;
   left: 50%;
