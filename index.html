@@ -10,11 +10,17 @@
 	<div class="overlay"></div>
 </div>
 
-<div class="victoireText">Victoire</div>
-<div class="gameOverText">Game Over</div>
+<div class="victoireText" hidden>Victoire</div>
+<div class="gameOverText" hidden>Game Over</div>
 <div class="radio">
-	<input type="radio" value="PacmanIA"  id="radioPacmanIA"/> Pacman IA<br/>
-	<input type="radio" value="PacmanJoueur" id="radioPacmanJoueur"/> Pacman Joueur<br/>
+	<div>
+		<input type="radio" value="PacmanIA" checked name="radioPac" id="radioPacmanIA"/>
+		<label for="radioPacmanIA">Pacman IA</label>
+	</div>
+	<div>
+		<input type="radio" value="PacmanJoueur" name="radioPac" id="radioPacmanJoueur"/>
+		<label for="radioPacmanJoueur">Pacman Joueur</label>
+	</div>
 </div>
 <div class="pauseText">Pause</div>
 <h3 class="scoreTxt">Score: <span id="score"></span></h3>

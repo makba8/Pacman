@@ -1,4 +1,3 @@
-const squares = [];
 const width = 28; // ça veut dire un index max de 784
 const scoreDisplay = document.getElementById("score");
 const pauseBtn = document.querySelector(".pauseBtn");
@@ -10,6 +9,7 @@ const restartBtn = document.querySelector(".restartBtn");
 const grid = document.querySelector(".grid");
 const radioPacmanIA = document.getElementById('radioPacmanIA');
 const radioPacmanJoueur = document.getElementById('radioPacmanJoueur');
+let squares = [];
 let pacmanCurrentIndex = 490;
 let score = 0;
 let isPaused = false;
@@ -17,8 +17,9 @@ let isFinished = false;
 let pacManIAIntervalId = -1;
 let tick = 0;
 let scared_lasting_ticks = 0;
+let lastDirection = 'X';
 
-const layout = [
+const original_layout = [
 	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 	1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1,
@@ -59,6 +60,8 @@ const layout = [
 // 4 - empty
 // grille de 28 par 28
 
+let layout = JSON.parse(JSON.stringify(original_layout));
+
 //create ghosts using Constructors
 class Ghost {
 	constructor(className, startIndex, speed) {
@@ -71,12 +74,40 @@ class Ghost {
 	}
 }
 
-const ghosts = [
+let ghosts = [
 	new Ghost("blinky", 348, 250),
 	new Ghost("pinky", 376, 400),
 	new Ghost("inky", 351, 300),
 	new Ghost("clyde", 379, 500),
 ];
+
+function reset() {
+	layout = JSON.parse(JSON.stringify(original_layout));
+	pacmanCurrentIndex = 490;
+
+	squares = [];
+	score = 0;
+	isPaused = false;
+	isFinished = false;
+	clearInterval(pacManIAIntervalId);
+	pacManIAIntervalId = -1;
+	tick = 0;
+	lastDirection = 'X';
+	scared_lasting_ticks = 0;
+	ghosts = [
+		new Ghost("blinky", 348, 250),
+		new Ghost("pinky", 376, 400),
+		new Ghost("inky", 351, 300),
+		new Ghost("clyde", 379, 500),
+	]
+	if (victoireText)
+		victoireText.hidden = true;
+	if (gameOverText)
+		gameOverText.hidden = true;
+	if (grid)
+		grid.classList.remove("blur");
+	createBoard();
+}
 
 function closestPacDot() { //Fonction pour trouver la pacDot la plus proche //TODO : Check si la recherche est optimisé, je crois que des voisins sont en doublons
 	let searchPacDot = [pacmanCurrentIndex]; // Commencez la recherche à partir de la position actuelle de Pacman
@@ -251,6 +282,9 @@ function reconstructPath(cameFrom, current) {
 function createBoard() {
 	if (!grid)
 		return;
+	squares = [];
+	if (document.getElementsByClassName("grid")[0])
+		document.getElementsByClassName("grid")[0].innerHTML = `<div class="overlay"></div>`
 	for (let i = 0; i < layout.length; i++) {
 		const square = document.createElement("div");
 		grid.appendChild(square);
@@ -267,6 +301,7 @@ function createBoard() {
 			squares[i].classList.add("power-pellet");
 		}
 	}
+	scoreDisplay.innerText = "0";
 }
 
 function drawPacman(pos, hide = false) {
@@ -280,11 +315,10 @@ function drawPacman(pos, hide = false) {
 
 //move pacman
 function movePacman(e) {
-	clearInterval(pacManIAIntervalId);
 	if (isPaused === false && isFinished === false) {
 		drawPacman(pacmanCurrentIndex, true);
-		switch (e.keyCode) {
-			case 37:
+		switch (e) {
+			case 'W':
 				if (
 					pacmanCurrentIndex % width !== 0 &&
 					layout[pacmanCurrentIndex - 1] !== 1 &&
@@ -295,7 +329,7 @@ function movePacman(e) {
 					pacmanCurrentIndex = 391;
 				}
 				break;
-			case 38:
+			case 'N':
 				if (
 					pacmanCurrentIndex - width >= 0 &&
 					layout[pacmanCurrentIndex - width] !== 1 &&
@@ -303,7 +337,7 @@ function movePacman(e) {
 				)
 					pacmanCurrentIndex -= width;
 				break;
-			case 39:
+			case 'E':
 				if (
 					pacmanCurrentIndex % width < width - 1 &&
 					layout[pacmanCurrentIndex + 1] !== 1 &&
@@ -314,7 +348,7 @@ function movePacman(e) {
 					pacmanCurrentIndex = 364;
 				}
 				break;
-			case 40:
+			case 'S':
 				if (
 					pacmanCurrentIndex + width < width * width &&
 					layout[pacmanCurrentIndex + width] !== 1 &&
@@ -324,10 +358,6 @@ function movePacman(e) {
 				break;
 		}
 		drawPacman(pacmanCurrentIndex);
-		pacDotEaten();
-		powerPelletEaten();
-		checkForGameOver();
-		checkForWin();
 	}
 }
 
@@ -344,11 +374,6 @@ function movePacmanIA() {
 			drawPacman(pacmanCurrentIndex);
 		}
 	}
-	pacDotEaten();
-	powerPelletEaten();
-	checkForGameOver();
-	checkForWin();
-
 }
 
 function moveGhosts() {
@@ -356,28 +381,52 @@ function moveGhosts() {
 		moveGhost(ghosts[i]);
 }
 
-function gameLoop(frameTime = 200) {
+function keyboardHandler(e) {
+	switch (e.keyCode) {
+		case 38: // UP
+			lastDirection = 'N';
+			break;
+		case 40: // DOWN
+			lastDirection = 'S';
+			break;
+		case 37:
+			lastDirection = 'W';
+			break;
+		case 39:
+			lastDirection = 'E';
+			break;
+	}
+}
+
+function gameLoop(frameTime = 50, resolve) {
 	tick = 0;
-	setInterval(() => {
-		movePacmanIA();
+	clearInterval(pacManIAIntervalId);
+	pacManIAIntervalId = setInterval(() => {
+		if (radioPacmanJoueur && radioPacmanJoueur.checked)
+			movePacman(lastDirection)
+		else
+			movePacmanIA();
+		pacDotEaten();
+		powerPelletEaten();
+		checkForGameOver();
+		checkForWin();
 		moveGhosts();
 		unScareGhosts();
+		if (isFinished)
+		{
+			clearInterval(pacManIAIntervalId);
+			resolve()
+		}
 		tick++;
 	}, frameTime)
 }
-
-function movePacmanIntervalIA(time = 250) {//TODO : Esquive les fantomes grace a a*2 mais n'est pas très performant...
-	clearInterval(pacManIAIntervalId);
-
-	pacManIAIntervalId = setInterval(movePacmanIA, time); //Pacman avancera d'une case toute les 250 ms
-}
-
 
 // what happens when you eat a pac-dot
 function pacDotEaten() {
 	if (layout[pacmanCurrentIndex] === 0) {
 		score++;
-		scoreDisplay.innerHTML = score;
+		if (scoreDisplay)
+			scoreDisplay.innerHTML = score;
 		if (squares.length > 0)
 			squares[pacmanCurrentIndex].classList.remove("pac-dot");
 		layout[pacmanCurrentIndex] = 4; //Il faut modifier le plateau pour que PacMan ne chasse pas des Dots invisibles
@@ -481,13 +530,6 @@ function moveGhost(ghost) {
 	checkForGameOver();
 }
 
-// Modification de celle de base pour implémenter A*
-function moveIntervalGhost(ghost) {
-	ghost.timerId = setInterval(() => {
-		moveGhost(ghost);
-	}, ghost.speed);
-}
-
 ///////////////////////a revoir ////////////////////////////////////////////////////////////////////////////
 
 
@@ -511,10 +553,9 @@ function checkForGameOver() {
 			overlay.style.pointerEvents = "auto";
 		}
 		if (gameOverText)
-			gameOverText.classList.add("show");
+			gameOverText.hidden = false;
 		if (restartBtn) {
 			restartBtn.classList.add("show");
-			restartBtn.disabled = false;
 		}
 	}
 }
@@ -530,80 +571,57 @@ function checkForWin() {
 			overlay.style.pointerEvents = "auto";
 		}
 		if (victoireText)
-			victoireText.classList.add("show");
+			victoireText.hidden = false;
 		if (restartBtn) {
 			restartBtn.classList.add("show");
-			restartBtn.disabled = false;
 		}
 	}
 }
 
-function main() {
-	restartBtn.disabled = true;
-	createBoard();
-
-//create Characters
-//draw pacman onto the board
+function drawEntities() {
+	if (squares.length === 0)
+		return;
 	drawPacman(pacmanCurrentIndex);
-//get the coordinates of pacman on the grid with X and Y axis
-// function getCoordinates(index) {
-//   return [index % width, Math.floor(index / width)]
-// }
-
-// console.log(getCoordinates(pacmanCurrentIndex))
-
-	radioPacmanIA.addEventListener('change', function () {
-		if (radioPacmanIA.checked) {
-			radioPacmanJoueur.checked = false;
-			radioPacmanJoueur.disabled = true;
-			//Faire bouger le pacMan
-			movePacmanIntervalIA();
-		}
+	ghosts.forEach((ghost) => {
+		squares[ghost.currentIndex].classList.add(ghost.className);
+		squares[ghost.currentIndex].classList.add("ghost");
 	});
+}
 
-	radioPacmanJoueur.addEventListener('change', function () {
-		if (radioPacmanJoueur.checked) {
-			radioPacmanIA.checked = false;
-			radioPacmanIA.disabled = true;
-			clearInterval(pacManIAIntervalId);
-			document.addEventListener("keydown", movePacman); //TODO : à retirer si PAC-MAN se déplace tout seul
+function main(frameTime=200) {
+	return new Promise((resolve) => {
+		reset();
+		createBoard();
+		drawEntities();
+		document.addEventListener("keydown", keyboardHandler);
 
-		}
-	});
+		//Bouger les fantomes tout le temps du jeu
+		gameLoop(frameTime, resolve);
 
-	//draw my ghosts onto the grid
-	if (squares.length > 0)
-		ghosts.forEach((ghost) => {
-			squares[ghost.currentIndex].classList.add(ghost.className);
-			squares[ghost.currentIndex].classList.add("ghost");
-		});
+		// Code pour mettre le jeu en pause
+		if (pauseBtn)
+			pauseBtn.addEventListener("click", () => {
+				if (!isFinished) { // vérifie si le jeu n'est pas fini
+					if (isPaused) { // vérifie si le jeu est deja en pause
+						pauseBtn.textContent = "Pause";
+						grid.classList.remove("blur"); // Appliquer la classe blur à la grille
+						overlay.style.pointerEvents = "none"; // Désactiver les événements de souris sur l'overlay
+						pauseText.classList.remove("show");
+						isPaused = false;
+					} else {
+						isPaused = true;
+						pauseBtn.textContent = "Play";
+						grid.classList.add("blur");
+						overlay.style.pointerEvents = "auto";
+						pauseText.classList.add("show");
+					}
+				}
+			});
 
-	//Regler le temps d'un tick
-	gameLoop(200);
-
-	// Code pour mettre le jeu en pause
-	pauseBtn.addEventListener("click", () => {
-		if (!isFinished) { // vérifie si le jeu n'est pas fini
-			if (isPaused) { // vérifie si le jeu est deja en pause
-				ghosts.forEach((ghost) => moveIntervalGhost(ghost));
-				pauseBtn.textContent = "Pause";
-				grid.classList.remove("blur"); // Appliquer la classe blur à la grille
-				overlay.style.pointerEvents = "none"; // Désactiver les événements de souris sur l'overlay
-				pauseText.classList.remove("show");
-				isPaused = false;
-			} else {
-				ghosts.forEach((ghost) => clearInterval(ghost.timerId));
-				isPaused = true;
-				pauseBtn.textContent = "Play";
-				grid.classList.add("blur");
-				overlay.style.pointerEvents = "auto";
-				pauseText.classList.add("show");
-			}
-		}
-	});
-
-	// Bouton pour recommencer une partie
-	restartBtn.addEventListener("click", () => {
-		location.reload();
-	});
+		// Bouton pour recommencer une partie
+		if (restartBtn)
+			restartBtn.addEventListener("click", () => {
+				main(frameTime);
+			});
+	})
 }

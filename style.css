@@ -112,7 +112,6 @@ body {
   font-weight: bold;
   z-index: 3;
   pointer-events: none; /* Permet aux événements de souris de passer à travers */
-  opacity: 0;
   transition: opacity 0.5s ease;
   text-align: center;
 }
@@ -127,11 +126,9 @@ body {
   font-weight: bold;
   z-index: 3;
   pointer-events: none; /* Permet aux événements de souris de passer à travers */
-  opacity: 0;
   transition: opacity 0.5s ease;
 }
 .restartBtn {
-  opacity: 0;
   border-radius: 14px;
   background-color: transparent;
   color: rgb(255, 242, 0);
