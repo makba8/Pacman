@@ -18,7 +18,7 @@ let pacManIAIntervalId = -1;
 let tick = 0;
 let scared_lasting_ticks = 0;
 let lastDirection = 'X';
-
+//Tableau qui stock l'information des cases du Pacman
 const original_layout = [
 	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 	1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0,
@@ -67,9 +67,9 @@ class Ghost {
 	constructor(className, startIndex, speed) {
 		this.className = className;
 		this.startIndex = startIndex;
-		this.speed = speed;
-		this.currentIndex = startIndex;
-		this.isScared = false;
+		this.speed = speed; //La speed n'est plus utilisé puisqu'on a changé le système du jeu en tick
+		this.currentIndex = startIndex; // Case de départ des pacmans
+		this.isScared = false; //est-ce que le fantôme est vulnérable
 		this.timerId = NaN;
 	}
 }
@@ -81,10 +81,10 @@ let ghosts = [
 	new Ghost("clyde", 379, 500),
 ];
 
-function reset() {
+function reset() { //Sert à redémarrer le jeu sans faire un reload de la page ce qui était initialement le cas
 	layout = JSON.parse(JSON.stringify(original_layout));
-	pacmanCurrentIndex = 490;
-
+	pacmanCurrentIndex = 490; //On reset la position du pacman 
+	//et tous les autres paramètres...
 	squares = [];
 	score = 0;
 	isPaused = false;
@@ -109,7 +109,7 @@ function reset() {
 	createBoard();
 }
 
-function closestPacDot() { //Fonction pour trouver la pacDot la plus proche //TODO : Check si la recherche est optimisé, je crois que des voisins sont en doublons
+function closestPacDot() { //Fonction pour trouver la pacDot la plus proche 
 	let searchPacDot = [pacmanCurrentIndex]; // Commencez la recherche à partir de la position actuelle de Pacman
 
 	for (let i = 0; i < searchPacDot.length; i++) {
@@ -304,8 +304,8 @@ function createBoard() {
 	scoreDisplay.innerText = "0";
 }
 
-function drawPacman(pos, hide = false) {
-	if (squares.length === 0)
+function drawPacman(pos, hide = false) { //Fonction graphique
+	if (squares.length === 0) //Si la grille n'apparait pas, pacman non plus
 		return;
 	if (hide)
 		squares[pacmanCurrentIndex].classList.remove("pac-man");
@@ -313,11 +313,11 @@ function drawPacman(pos, hide = false) {
 		squares[pacmanCurrentIndex].classList.add("pac-man");
 }
 
-//move pacman
+//Bouger le pacman avec les touches du clavier
 function movePacman(e) {
 	if (isPaused === false && isFinished === false) {
 		drawPacman(pacmanCurrentIndex, true);
-		switch (e) {
+		switch (e) { //e représente l'input
 			case 'W':
 				if (
 					pacmanCurrentIndex % width !== 0 &&
@@ -325,7 +325,7 @@ function movePacman(e) {
 					layout[pacmanCurrentIndex - 1] !== 2
 				)
 					pacmanCurrentIndex -= 1;
-				if (pacmanCurrentIndex - 1 === 363) {
+				if (pacmanCurrentIndex - 1 === 363) { //cas où pacman atterit sur la case qui le fait bouger à l'autre bout du plateau
 					pacmanCurrentIndex = 391;
 				}
 				break;
@@ -344,7 +344,7 @@ function movePacman(e) {
 					layout[pacmanCurrentIndex + 1] !== 2
 				)
 					pacmanCurrentIndex += 1;
-				if (pacmanCurrentIndex + 1 === 392) {
+				if (pacmanCurrentIndex + 1 === 392) {//cas où pacman atterit sur la case qui le fait bouger à l'autre bout du plateau
 					pacmanCurrentIndex = 364;
 				}
 				break;
@@ -368,7 +368,7 @@ function movePacmanIA() {
 		// Assurez-vous que le chemin n'est pas vide
 		if (pathToPacDot.length > 1) {
 			const nextMove = pathToPacDot[1];
-			// Retirez la classe de PacMan
+			// Faire bouger pacman Graphiquement
 			drawPacman(pacmanCurrentIndex, true);
 			pacmanCurrentIndex = nextMove;
 			drawPacman(pacmanCurrentIndex);
@@ -376,13 +376,13 @@ function movePacmanIA() {
 	}
 }
 
-function moveGhosts() {
+function moveGhosts() { //Fait bouger tous les fantômes
 	for (let i = 0; i < ghosts.length; i++)
 		moveGhost(ghosts[i]);
 }
 
-function keyboardHandler(e) {
-	switch (e.keyCode) {
+function keyboardHandler(e) { //On traduit les input du clavier en direction
+	switch (e.keyCode) { //On va mettre l'input dans la variable "last direction" pour que le pacman execute touche le dernier input
 		case 38: // UP
 			lastDirection = 'N';
 			break;
@@ -398,27 +398,28 @@ function keyboardHandler(e) {
 	}
 }
 
-function gameLoop(frameTime = 50, resolve) {
-	tick = 0;
-	clearInterval(pacManIAIntervalId);
-	pacManIAIntervalId = setInterval(() => {
+function gameLoop(frameTime = 200, resolve) { //système de boucle pour faire tourner le jeu autant de fois qu'on le veux et à la vitesse qu'on veux
+	//resolve permet de renvoyer une promise et donc de satisfaire la condition "await" voir "perf_async_test(...)" dans tests.js
+	tick = 0; //Au départ, le jeu commence au tick 0
+	clearInterval(pacManIAIntervalId); //reset de la fonction timer
+	pacManIAIntervalId = setInterval(() => { 
 		if (radioPacmanJoueur && radioPacmanJoueur.checked)
-			movePacman(lastDirection)
+			movePacman(lastDirection) //Cas où l'option pour faire bouger pacman manuellement est coché
 		else
-			movePacmanIA();
-		pacDotEaten();
+			movePacmanIA(); //Cas où c'est l'IA qui joue
+		pacDotEaten(); //On check les actions qu'à fait pacman
 		powerPelletEaten();
 		checkForGameOver();
 		checkForWin();
-		moveGhosts();
+		moveGhosts(); //On fait ensuite bouger les fantômes
 		unScareGhosts();
 		if (isFinished)
 		{
 			clearInterval(pacManIAIntervalId);
 			resolve()
-		}
-		tick++;
-	}, frameTime)
+		}//Tous les personnages ont fait une action (== bougé d'une case ou pas pour pacman)
+		tick++;  //On passe donc au prochain tick/tour
+	}, frameTime) //
 }
 
 // what happens when you eat a pac-dot
@@ -429,7 +430,7 @@ function pacDotEaten() {
 			scoreDisplay.innerHTML = score;
 		if (squares.length > 0)
 			squares[pacmanCurrentIndex].classList.remove("pac-dot");
-		layout[pacmanCurrentIndex] = 4; //Il faut modifier le plateau pour que PacMan ne chasse pas des Dots invisibles
+		layout[pacmanCurrentIndex] = 4; //Rappel : 4 signifie que la case devient vide, il faut modifier le plateau pour que PacMan ne chasse pas des Dots invisibles
 	}
 }
 
@@ -578,7 +579,7 @@ function checkForWin() {
 	}
 }
 
-function drawEntities() {
+function drawEntities() { //Fonction graphique pour faire apparaître les personnages seulement s'il y a une grille
 	if (squares.length === 0)
 		return;
 	drawPacman(pacmanCurrentIndex);
@@ -588,15 +589,15 @@ function drawEntities() {
 	});
 }
 
-function main(frameTime=200) {
-	return new Promise((resolve) => {
+function main(frameTime=200) { //Permet de lancer le jeu
+	return new Promise((resolve) => { //Promise permet de lancer une autre fonction asynchrone en parallèle (voir tests.js)
 		reset();
 		createBoard();
 		drawEntities();
 		document.addEventListener("keydown", keyboardHandler);
 
 		//Bouger les fantomes tout le temps du jeu
-		gameLoop(frameTime, resolve);
+		gameLoop(frameTime, resolve); //resolve
 
 		// Code pour mettre le jeu en pause
 		if (pauseBtn)
