@@ -152,20 +152,24 @@ function aStar2(startIndex, targetIndex) {
 		const current = getLowestFScore(openSet, fScore); // Sélectionne la cellule avec le coût total estimé le plus bas
 
 		// Si la cellule actuelle est la cible, reconstruit le chemin
-		if (current === targetIndex) {
+		if (current === targetIndex && !isGhostInSquare(current)) {
+			console.log("la prochaaine case du pacman" + current);
 			return reconstructPath(cameFrom, targetIndex);
 		}
 
+		
 		openSet.splice(openSet.indexOf(current), 1); // Retire la cellule actuelle de l'ensemble à explorer
 
 		const neighbors = getNeighbors(current, width); // Récupère les voisins valides de la cellule actuelle
 
+		
 		// Parcours des voisins
 		for (const neighbor of neighbors) {
 			const tentativeGScore = gScore[current] + 1; // Coût du départ à la cellule voisine supposant que le coût est de 1
 
 			// Vérifie si la case voisine n'est pas occupée par un fantôme
 			if (!isGhostInSquare(neighbor)) {
+				console.log("la case: "+ neighbor +"n'est pas occupé");
 				// Si la case voisine n'a pas encore été évaluée ou si le nouveau chemin est meilleur
 				if (!gScore.hasOwnProperty(neighbor) || tentativeGScore < gScore[neighbor]) {
 					cameFrom[neighbor] = current; // Met à jour la cellule depuis laquelle on est arrivé à la cellule voisine
@@ -177,7 +181,7 @@ function aStar2(startIndex, targetIndex) {
 						openSet.push(neighbor);
 					}
 				}
-			}
+       }
 		}
 	}
 
@@ -185,7 +189,7 @@ function aStar2(startIndex, targetIndex) {
 	return [];
 }
 
-// fonction a*
+// fonction a* Pour fantomes 
 function aStar(startIndex, targetIndex) {
 	const width = 28;
 	const openSet = [startIndex]; // L'ensemble des cellules à explorer
@@ -223,6 +227,35 @@ function aStar(startIndex, targetIndex) {
 	// Aucun chemin trouvé
 	return [];
 }
+
+// fonction BFS Pour fantomes 
+function bfs(startIndex, targetIndex) {
+	const width = 28;
+	const queue = [startIndex]; // La file d'attente pour les cellules à explorer
+	const visited = new Set(); // Stocke les cellules déjà visitées
+	const cameFrom = {}; // Stocke la relation "depuis quelle cellule, on est arrivé à cette cellule"
+
+	visited.add(startIndex);
+
+	while (queue.length > 0) {
+		const current = queue.shift(); // Retire la première cellule de la file d'attente
+		if (current === targetIndex) {
+			return reconstructPath(cameFrom, targetIndex); // La cible a été atteinte, reconstruit le chemin
+		}
+
+		const neighbors = getNeighbors(current, width); // Récupère les voisins valides de la cellule actuelle
+		for (const neighbor of neighbors) {
+			if (!visited.has(neighbor)) {
+				queue.push(neighbor); // Ajoute la cellule voisine à la file d'attente si elle n'a pas été visitée
+				visited.add(neighbor); // Marque la cellule voisine comme visitée
+				cameFrom[neighbor] = current; // Met à jour la cellule depuis laquelle on est arrivé à la cellule voisine
+			}
+		}
+	}
+	// Aucun chemin trouvé
+	return [];
+}
+
 
 // Heuristique pour estimer la distance entre deux cellules
 function heuristic(current, target) {
@@ -364,21 +397,27 @@ function movePacman(e) {
 function movePacmanIA() {
 	if (isPaused === false && isFinished === false) { //On s'assure que le jeu n'est ni en pause ni fini
 		const pathToPacDot = aStar2(pacmanCurrentIndex, closestPacDot()); // On va chercher les PacDots les plus proche avec la fonction A*
-
-		// Assurez-vous que le chemin n'est pas vide
-		if (pathToPacDot.length > 1) {
-			const nextMove = pathToPacDot[1];
-			// Faire bouger pacman Graphiquement
-			drawPacman(pacmanCurrentIndex, true);
-			pacmanCurrentIndex = nextMove;
-			drawPacman(pacmanCurrentIndex);
+		 
+			// Assurez-vous que le chemin n'est pas vide
+			if (pathToPacDot.length > 1) {
+				const nextMove = pathToPacDot[1];
+				// Faire bouger pacman Graphiquement
+				drawPacman(pacmanCurrentIndex, true);
+				pacmanCurrentIndex = nextMove;
+				drawPacman(pacmanCurrentIndex);
+			 
 		}
+		
 	}
 }
 
 function moveGhosts() { //Fait bouger tous les fantômes
+	if (isPaused === false ){
 	for (let i = 0; i < ghosts.length; i++)
-		moveGhost(ghosts[i]);
+	//faire un choix entre BFS et A* 
+		moveGhostBFS(ghosts[i]); // BFS
+		//moveGhost(ghosts[i]); // A*
+	}
 }
 
 function keyboardHandler(e) { //On traduit les input du clavier en direction
@@ -406,7 +445,7 @@ function gameLoop(frameTime = 200, resolve) { //système de boucle pour faire to
 		if (radioPacmanJoueur && radioPacmanJoueur.checked)
 			movePacman(lastDirection) //Cas où l'option pour faire bouger pacman manuellement est coché
 		else
-			movePacmanIA(); //Cas où c'est l'IA qui joue
+		movePacmanIA(); //Cas où c'est l'IA qui joue
 		pacDotEaten(); //On check les actions qu'à fait pacman
 		powerPelletEaten();
 		checkForGameOver();
@@ -530,20 +569,73 @@ function moveGhost(ghost) {
 
 	checkForGameOver();
 }
+/////////////////////////////////////BFS////////////////
+
+
+function moveGhostBFS(ghost) {
+	// Si le fantôme est effrayé et que pacman le touche
+	if (ghost.isScared && ghost.currentIndex === pacmanCurrentIndex) {
+		squares[ghost.currentIndex].classList.remove(
+			ghost.className,
+			"ghost",
+			"scared-ghost"
+		);
+		ghost.currentIndex = ghost.startIndex;
+		score += 100;
+		squares[ghost.currentIndex].classList.add(ghost.className, "ghost");
+	}
+
+	// Si le fantôme est effrayé
+	if (ghost.isScared) {
+		if (squares.length > 0)
+			squares[ghost.currentIndex].classList.add("scared-ghost");
+		moveRandom(ghost);
+	}
+
+	else{
+	const pathToPacman = bfs(ghost.currentIndex, pacmanCurrentIndex);
+	
+	if (pathToPacman.length > 1) {
+		const nextMove = pathToPacman[1];
+		squares[ghost.currentIndex].classList.remove(
+			ghost.className,
+			"ghost",
+			"scared-ghost"
+		);
+		ghost.currentIndex = nextMove;
+		
+		squares[ghost.currentIndex].classList.add(ghost.className, "ghost");
+	}
+
+	if (ghost.isScared && ghost.currentIndex === pacmanCurrentIndex) {
+		drawPacman(pacmanCurrentIndex, true);
+		pacmanCurrentIndex = 490;
+		drawPacman(pacmanCurrentIndex);
+	}
+}
+	checkForGameOver();
+}
+
+
 
 ///////////////////////a revoir ////////////////////////////////////////////////////////////////////////////
-
+//////C'est elle qui déconne pour savoir si un fantome est dans la acase ou pas 
 
 // Fonction pour vérifier si un fantôme est dans la case
 function isGhostInSquare(index, check_scared = false) {
 	if (check_scared)
+	ghosts.some((ghost) => console.log(ghost.currentIndex));
+console.log("tour"); 
 		return ghosts.some((ghost) => ghost.currentIndex === index && ghost.isScared === false);
-	return ghosts.some((ghost) => ghost.currentIndex === index);
+
+	
+	return ghosts.some((ghost) => ghost.currentIndex === index && ghost.isScared);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 //check for a game over
 function checkForGameOver() {
+	console.log("checkGameOver"); 
 	if (isGhostInSquare(pacmanCurrentIndex, true)) {
 		isFinished = true;
 		ghosts.forEach((ghost) => clearInterval(ghost.timerId));
