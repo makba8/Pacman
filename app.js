@@ -18,6 +18,9 @@ let pacManIAIntervalId = -1;
 let tick = 0;
 let scared_lasting_ticks = 0;
 let lastDirection = 'X';
+let pacmanBehavior = "PPeater"; //TODO mettre à défaut quand l'IA sera full fix
+let nbPowerPellet=4;
+let pathing;
 //Tableau qui stock l'information des cases du Pacman
 const original_layout = [
 	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -94,6 +97,8 @@ function reset() { //Sert à redémarrer le jeu sans faire un reload de la page 
 	tick = 0;
 	lastDirection = 'X';
 	scared_lasting_ticks = 0;
+	nbPowerPellet=4;
+	
 	ghosts = [
 		new Ghost("blinky", 348, 250),
 		new Ghost("pinky", 376, 400),
@@ -126,17 +131,44 @@ function closestPacDot() { //Fonction pour trouver la pacDot la plus proche
 			} else {
 				// S'il n'y a pas de PacDot, on ajoute ces voisins et on recommence
 				searchPacDot.push(neighbor);
+				
 			}
 		}
 	}
-
 	// Si aucun PacDot n'est trouvé (en général, c'est qu'il a gagné)
 	console.log("Aucun PacDot trouvé dans les voisins.");
 	return null;
 }
 
+function closestPowerPellet() {
+	let searchPowerPellet = [pacmanCurrentIndex]; // Commencez la recherche à partir de la position actuelle de Pacman
+	for (let i = 0; i < searchPowerPellet.length; i++) {
+		const currentIndex = searchPowerPellet[i];
+
+		// Obtenir les voisins de la case actuelle
+		const neighbors = getNeighbors(currentIndex, width);
+
+		for (const neighbor of neighbors) {
+			// Pour chaque voisin, vérifier s'il y a un PacDot
+			if (layout[neighbor] === 3) {
+				// console.log("PowerPellet trouvé à l'index :", neighbor); //Debug
+				return neighbor; //On renvoie l'index du PowerPellet trouvé
+			} else {
+				// S'il n'y a pas de PowerPellet, on ajoute ces voisins et on recommence
+				searchPowerPellet.push(neighbor); //TODO FIX ARRAY.PUSH ???????????
+				
+			}	
+		}
+	}
+	console.log("Aucun PowerPellet trouvé dans les voisins.");
+	pacmanBehavior="defaut";
+	return null;
+}
+
+
+
 // Fonction A* modifiée pour que Pacman évite les fantômes
-// TODO: fix
+// TODO: fix le pathing de pacman ici
 function aStar2(startIndex, targetIndex) {
 	const width = 28;
 	const openSet = [startIndex]; // Ensemble des cellules à explorer
@@ -157,19 +189,19 @@ function aStar2(startIndex, targetIndex) {
 			return reconstructPath(cameFrom, targetIndex);
 		}
 
-		
+
 		openSet.splice(openSet.indexOf(current), 1); // Retire la cellule actuelle de l'ensemble à explorer
 
 		const neighbors = getNeighbors(current, width); // Récupère les voisins valides de la cellule actuelle
 
-		
+
 		// Parcours des voisins
 		for (const neighbor of neighbors) {
 			const tentativeGScore = gScore[current] + 1; // Coût du départ à la cellule voisine supposant que le coût est de 1
 
 			// Vérifie si la case voisine n'est pas occupée par un fantôme
 			if (!isGhostInSquare(neighbor)) {
-				console.log("la case: "+ neighbor +"n'est pas occupé");
+				console.log("la case: " + neighbor + "n'est pas occupé");
 				// Si la case voisine n'a pas encore été évaluée ou si le nouveau chemin est meilleur
 				if (!gScore.hasOwnProperty(neighbor) || tentativeGScore < gScore[neighbor]) {
 					cameFrom[neighbor] = current; // Met à jour la cellule depuis laquelle on est arrivé à la cellule voisine
@@ -181,7 +213,7 @@ function aStar2(startIndex, targetIndex) {
 						openSet.push(neighbor);
 					}
 				}
-       }
+			}
 		}
 	}
 
@@ -258,9 +290,22 @@ function bfs(startIndex, targetIndex) {
 
 
 // Heuristique pour estimer la distance entre deux cellules
-function heuristic(current, target) {
+function heuristic(current, target) { 
+	//const [x1, y1] = indexToCoordinates(current);
+	//const [x2, y2] = indexToCoordinates(target);
+	//return Math.abs(x1 - x2) + Math.abs(y1 - y2);
+
 	const [x1, y1] = indexToCoordinates(current);
 	const [x2, y2] = indexToCoordinates(target);
+	if (pacmanBehavior === "defaut") {//Heuristique visant à maximiser la distance avec tous les fantomes
+		let distMoyenne = 0;
+		for (let i = 0; i < ghosts.length; i++) {
+			let [xg, yg] = indexToCoordinates(ghosts[i].currentIndex);
+			distMoyenne = (distMoyenne * (i - 1) + (Math.abs(x1 - xg) + Math.abs(y1 - yg))) / i//TODO Regarder ce que ça fait ça ?
+		}
+		return (100 / (distMoyenne + (Math.abs(x1 - x2))) + Math.abs(y1 - y2)) / 2
+	}
+
 	return Math.abs(x1 - x2) + Math.abs(y1 - y2);
 }
 
@@ -276,7 +321,7 @@ function getNeighbors(index, width) {
 	const [x, y] = indexToCoordinates(index);
 	const neighbors = [];
 
-	if (x > 0 && !(layout[index - 1] === 1)) {
+	if (x > 0 && !(layout[index - 1] === 1)) { //TODO ajouter la condition que le voisin ne soit pas un fantome
 		neighbors.push(index - 1);
 	}
 
@@ -294,6 +339,7 @@ function getNeighbors(index, width) {
 
 	return neighbors;
 }
+
 
 // Récupère l'indice de la cellule avec le plus bas coût total estimé
 function getLowestFScore(openSet, fScore) {
@@ -396,26 +442,35 @@ function movePacman(e) {
 
 function movePacmanIA() {
 	if (isPaused === false && isFinished === false) { //On s'assure que le jeu n'est ni en pause ni fini
-		const pathToPacDot = aStar2(pacmanCurrentIndex, closestPacDot()); // On va chercher les PacDots les plus proche avec la fonction A*
-		 
-			// Assurez-vous que le chemin n'est pas vide
-			if (pathToPacDot.length > 1) {
-				const nextMove = pathToPacDot[1];
-				// Faire bouger pacman Graphiquement
-				drawPacman(pacmanCurrentIndex, true);
-				pacmanCurrentIndex = nextMove;
-				drawPacman(pacmanCurrentIndex);
-			 
+		
+		switch (pacmanBehavior){
+			case 'defaut': pathing = aStar2(pacmanCurrentIndex, closestPacDot()); // On va chercher les PacDots les plus proche avec la fonction A*
+			break; 
+			case 'PPeater' : pathing = aStar2(pacmanCurrentIndex, closestPowerPellet()); // On va chercher les powerPellets
+			break; 
 		}
 		
+		
+		//TODO ajouter des conditions pour choisir le pathing
+		//TODO évaluer les 5 prochains mooves de pacman : if(pathToPacDot.length<6)
+		
+		// Assurez-vous que le chemin n'est pas vide
+		if (pathing.length > 1) {
+			const nextMove = pathing[1];
+			// Faire bouger pacman Graphiquement
+			drawPacman(pacmanCurrentIndex, true);
+			pacmanCurrentIndex = nextMove;
+			drawPacman(pacmanCurrentIndex);
+		}
+		//TODO: si powerpellet eaten = activer le pathing des fantomes ; si les fantomes sont trop loin, continuer de manger des points
 	}
 }
 
 function moveGhosts() { //Fait bouger tous les fantômes
-	if (isPaused === false ){
-	for (let i = 0; i < ghosts.length; i++)
-	//faire un choix entre BFS et A* 
-		moveGhostBFS(ghosts[i]); // BFS
+	if (isPaused === false) {
+		for (let i = 0; i < ghosts.length; i++)
+			//faire un choix entre BFS et A* 
+			moveGhostBFS(ghosts[i]); // BFS
 		//moveGhost(ghosts[i]); // A*
 	}
 }
@@ -441,19 +496,18 @@ function gameLoop(frameTime = 200, resolve) { //système de boucle pour faire to
 	//resolve permet de renvoyer une promise et donc de satisfaire la condition "await" voir "perf_async_test(...)" dans tests.js
 	tick = 0; //Au départ, le jeu commence au tick 0
 	clearInterval(pacManIAIntervalId); //reset de la fonction timer
-	pacManIAIntervalId = setInterval(() => { 
+	pacManIAIntervalId = setInterval(() => {
 		if (radioPacmanJoueur && radioPacmanJoueur.checked)
 			movePacman(lastDirection) //Cas où l'option pour faire bouger pacman manuellement est coché
 		else
-		movePacmanIA(); //Cas où c'est l'IA qui joue
+			movePacmanIA(); //Cas où c'est l'IA qui joue
 		pacDotEaten(); //On check les actions qu'à fait pacman
 		powerPelletEaten();
 		checkForGameOver();
 		checkForWin();
 		moveGhosts(); //On fait ensuite bouger les fantômes
 		unScareGhosts();
-		if (isFinished)
-		{
+		if (isFinished) {
 			clearInterval(pacManIAIntervalId);
 			resolve()
 		}//Tous les personnages ont fait une action (== bougé d'une case ou pas pour pacman)
@@ -477,16 +531,20 @@ function pacDotEaten() {
 function powerPelletEaten() {
 	if (layout[pacmanCurrentIndex] === 3) {
 		score += 10;
+		nbPowerPellet-=1;
+		if(nbPowerPellet===0)
+			pacmanBehavior='defaut';
 		ghosts.forEach((ghost) => {
 			ghost.isScared = true;
 			// Ajouter la classe "scared-ghost" pour indiquer que le fantôme a peur
 			if (squares.length > 0)
 				squares[ghost.currentIndex].classList.add("scared-ghost");
 		});
-		scared_lasting_ticks = 25;
+		scared_lasting_ticks = 25; //Temps pendant lequel les fantomes sont vulnerables
 		if (squares.length > 0)
 			squares[pacmanCurrentIndex].classList.remove("power-pellet");
 		layout[pacmanCurrentIndex] = 4;
+		//TODO changer l'IA de pacman pour qu'il mange les fantomes proche changer l'IA 
 	}
 }
 
@@ -592,27 +650,27 @@ function moveGhostBFS(ghost) {
 		moveRandom(ghost);
 	}
 
-	else{
-	const pathToPacman = bfs(ghost.currentIndex, pacmanCurrentIndex);
-	
-	if (pathToPacman.length > 1) {
-		const nextMove = pathToPacman[1];
-		squares[ghost.currentIndex].classList.remove(
-			ghost.className,
-			"ghost",
-			"scared-ghost"
-		);
-		ghost.currentIndex = nextMove;
-		
-		squares[ghost.currentIndex].classList.add(ghost.className, "ghost");
-	}
+	else {
+		const pathToPacman = bfs(ghost.currentIndex, pacmanCurrentIndex);
 
-	if (ghost.isScared && ghost.currentIndex === pacmanCurrentIndex) {
-		drawPacman(pacmanCurrentIndex, true);
-		pacmanCurrentIndex = 490;
-		drawPacman(pacmanCurrentIndex);
+		if (pathToPacman.length > 1) {
+			const nextMove = pathToPacman[1];
+			squares[ghost.currentIndex].classList.remove(
+				ghost.className,
+				"ghost",
+				"scared-ghost"
+			);
+			ghost.currentIndex = nextMove;
+
+			squares[ghost.currentIndex].classList.add(ghost.className, "ghost");
+		}
+
+		if (ghost.isScared && ghost.currentIndex === pacmanCurrentIndex) {
+			drawPacman(pacmanCurrentIndex, true);
+			pacmanCurrentIndex = 490;
+			drawPacman(pacmanCurrentIndex);
+		}
 	}
-}
 	checkForGameOver();
 }
 
@@ -622,20 +680,20 @@ function moveGhostBFS(ghost) {
 //////C'est elle qui déconne pour savoir si un fantome est dans la acase ou pas 
 
 // Fonction pour vérifier si un fantôme est dans la case
-function isGhostInSquare(index, check_scared = false) {
+function isGhostInSquare(index, check_scared = false) { //TODO Ghost.currentIndex() ?
 	if (check_scared)
-	ghosts.some((ghost) => console.log(ghost.currentIndex));
-console.log("tour"); 
-		return ghosts.some((ghost) => ghost.currentIndex === index && ghost.isScared === false);
+		ghosts.some((ghost) => console.log(ghost.currentIndex));
+	console.log("tour");
+	return ghosts.some((ghost) => ghost.currentIndex === index && ghost.isScared === false);
 
-	
+
 	return ghosts.some((ghost) => ghost.currentIndex === index && ghost.isScared);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 //check for a game over
 function checkForGameOver() {
-	console.log("checkGameOver"); 
+	console.log("checkGameOver");
 	if (isGhostInSquare(pacmanCurrentIndex, true)) {
 		isFinished = true;
 		ghosts.forEach((ghost) => clearInterval(ghost.timerId));
@@ -681,7 +739,7 @@ function drawEntities() { //Fonction graphique pour faire apparaître les person
 	});
 }
 
-function main(frameTime=200) { //Permet de lancer le jeu
+function main(frameTime = 200) { //Permet de lancer le jeu
 	return new Promise((resolve) => { //Promise permet de lancer une autre fonction asynchrone en parallèle (voir tests.js)
 		reset();
 		createBoard();

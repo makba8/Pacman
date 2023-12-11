@@ -5,6 +5,7 @@
 	<title>Tests unitaires</title>
 </head>
 <body>
+	
 
 <div style="width: 50%;"> <!--Contient un affichage où vont apparaître les "console.log" -->
 	<label>
@@ -12,17 +13,34 @@
 		<textarea rows="12" style="width: 100%; height: 100%" id="logs-output" readonly></textarea>
 	</label>
 </div>
+<div>
+	Tests unitaire :
+	<button onclick="unit_test('aStar', [10, 38, 39, 40, 68, 96, 124, 152, 151], 10, 151)">test A*</button><!--appel Astar, avec un chemin correcte-->
+<button onclick="unit_test('bfs', [10, 38, 39, 40, 68, 96, 124, 152, 151], 10, 151)">test bfs</button><!--appel Astar, avec un chemin correcte-->
+</div>
+</br>
+<div>
+	Tests de performance (temps en ms) :
+	<button onclick="perf_test('aStar', 10000, 10, 151)">perf A*</button> <!--appel Astar, la lance 100000 fois avec le start index et le endIndex -->
+	<button onclick="perf_test('bfs', 10000, 10, 151)">perf bfs</button> <!--appel Astar, la lance 100000 fois avec le start index et le endIndex -->
+</div>
+</br>
+<div>
+	Lancer le jeu :
+	<button onclick="perf_async_test('main', 1, 200)">main x1(lent)</button>  <!--appel le main une fois mais tourne le jeu normalement (tick = 200ms) -->
+<button onclick="perf_async_test('main', 10, 0)">main x 10</button> <!--appel le main dix fois mais tourne le jeu le plus rapidement possible-->
+</div>
+
 <div style="width: 50%;">
 	<canvas id="memory-graph"></canvas>
 </div>
 <div style="width: 50%;">
 	<canvas id="score-graph"></canvas>
 </div>
+</br>
 
-<button onclick="unit_test('aStar', [10, 38, 39, 40, 68, 96, 124, 152, 151], 10, 151)">test A*</button><!--appel Astar, avec un chemin correcte-->
-<button onclick="perf_test('aStar', 100000, 10, 151)">perf A*</button> <!--appel Astar, la lance 100000 fois avec le start index et le endIndex -->
-<button onclick="perf_async_test('main', 1, 200)">main x1(lent)</button>  <!--appel le main une fois mais tourne le jeu normalement (tick = 200ms) -->
-<button onclick="perf_async_test('main', 10, 0)">main x 10</button> <!--appel le main dix fois mais tourne le jeu le plus rapidement possible-->
+
+
 </body>
 <!--Pour les graphiques nous utilisons chart.js NOTE : il faut une connexion internet pour afficher les graphiques-->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.js"
