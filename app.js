@@ -443,13 +443,13 @@ function movePacman(e) {
 function movePacmanIA() {
 	if (isPaused === false && isFinished === false) { //On s'assure que le jeu n'est ni en pause ni fini
 		
-		switch (pacmanBehavior){
+/* 		switch (pacmanBehavior){
 			case 'defaut': pathing = aStar2(pacmanCurrentIndex, closestPacDot()); // On va chercher les PacDots les plus proche avec la fonction A*
 			break; 
 			case 'PPeater' : pathing = aStar2(pacmanCurrentIndex, closestPowerPellet()); // On va chercher les powerPellets
 			break; 
-		}
-		
+		} */
+		pathing = aStar2(pacmanCurrentIndex, closestPacDot());
 		
 		//TODO ajouter des conditions pour choisir le pathing
 		//TODO évaluer les 5 prochains mooves de pacman : if(pathToPacDot.length<6)
