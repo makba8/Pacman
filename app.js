@@ -136,7 +136,7 @@ function closestPacDot() { //Fonction pour trouver la pacDot la plus proche
 		}
 	}
 	// Si aucun PacDot n'est trouvé (en général, c'est qu'il a gagné)
-	console.log("Aucun PacDot trouvé dans les voisins.");
+	//console.log("Aucun PacDot trouvé dans les voisins.");
 	return null;
 }
 
@@ -185,7 +185,7 @@ function aStar2(startIndex, targetIndex) {
 
 		// Si la cellule actuelle est la cible, reconstruit le chemin
 		if (current === targetIndex && !isGhostInSquare(current)) {
-			console.log("la prochaaine case du pacman" + current);
+			//console.log("la prochaaine case du pacman" + current);
 			return reconstructPath(cameFrom, targetIndex);
 		}
 
@@ -201,7 +201,7 @@ function aStar2(startIndex, targetIndex) {
 
 			// Vérifie si la case voisine n'est pas occupée par un fantôme
 			if (!isGhostInSquare(neighbor)) {
-				console.log("la case: " + neighbor + "n'est pas occupé");
+				//console.log("la case: " + neighbor + "n'est pas occupé");
 				// Si la case voisine n'a pas encore été évaluée ou si le nouveau chemin est meilleur
 				if (!gScore.hasOwnProperty(neighbor) || tentativeGScore < gScore[neighbor]) {
 					cameFrom[neighbor] = current; // Met à jour la cellule depuis laquelle on est arrivé à la cellule voisine
@@ -683,7 +683,7 @@ function moveGhostBFS(ghost) {
 function isGhostInSquare(index, check_scared = false) { //TODO Ghost.currentIndex() ?
 	if (check_scared)
 		ghosts.some((ghost) => console.log(ghost.currentIndex));
-	console.log("tour");
+	//console.log("tour");
 	return ghosts.some((ghost) => ghost.currentIndex === index && ghost.isScared === false);
 
 
@@ -693,7 +693,7 @@ function isGhostInSquare(index, check_scared = false) { //TODO Ghost.currentInde
 ///////////////////////////////////////////////////////////////////////////////////////////////
 //check for a game over
 function checkForGameOver() {
-	console.log("checkGameOver");
+	//console.log("checkGameOver");
 	if (isGhostInSquare(pacmanCurrentIndex, true)) {
 		isFinished = true;
 		ghosts.forEach((ghost) => clearInterval(ghost.timerId));
