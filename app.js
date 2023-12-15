@@ -714,8 +714,8 @@ function moveGhostBFS(ghost) {
 
 // Fonction pour vérifier si un fantôme est dans la case
 function isGhostInSquare(index, check_scared = false) { //TODO Ghost.currentIndex() ?
-	if (check_scared)
-		ghosts.some((ghost) => console.log(ghost.currentIndex));
+	/* if (check_scared)
+		ghosts.some((ghost) => console.log(ghost.currentIndex)); */
 	//console.log("tour");
 	return ghosts.some((ghost) => ghost.currentIndex === index && ghost.isScared === false);
 
@@ -746,7 +746,7 @@ function checkForGameOver() {
 
 //check for a win - more is when this score is reached
 function checkForWin() {
-	if (score === 274) {
+	if (score === 800) {
 		ghosts.forEach((ghost) => clearInterval(ghost.timerId));
 		document.removeEventListener("keyup", movePacman);
 		isFinished = true;
